@@ -37,9 +37,9 @@ void RenderWindow::clear(){
 
 void RenderWindow::render(Entity& p_entity){
 	SDL_Rect src;
-	src.x = p_entity.getSample() + p_entity.getId()*32.0f;
+	src.x = p_entity.getSample() + p_entity.getId()%4*32.0f;
 	//std::cout<<src.x<<std::endl;
-	src.y = p_entity.getCurrentFrame().y;
+	src.y = p_entity.getCurrentFrame().y+(p_entity.getId()-p_entity.getId()%4)*8;
 	src.w = p_entity.getCurrentFrame().w;
 	src.h = p_entity.getCurrentFrame().h;
 
@@ -70,4 +70,8 @@ void RenderWindow::render(SDL_Texture* p_tex, float p_size, float x, float y, fl
 
 void RenderWindow::display(){
 	SDL_RenderPresent(renderer);
+}
+
+void RenderWindow::setIcon(SDL_Surface* icon){
+	SDL_SetWindowIcon(window, icon);
 }

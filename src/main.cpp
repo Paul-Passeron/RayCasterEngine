@@ -8,17 +8,23 @@
 #include "geometry.hpp"
 #include <cmath>
 #include <chrono>
+#include <windows.h>
 int main(int arc, char* args[]){
+	HWND WindowHandle = GetConsoleWindow();
+	ShowWindow(WindowHandle, SW_HIDE);
 	if(SDL_Init(SDL_INIT_VIDEO) > 0){
 		std::cout << "SDL has failed: "<<SDL_GetError()<<std::endl;
 	}
 	if(!IMG_Init(IMG_INIT_PNG)){
 		std::cout << "IMG has failed: "<<SDL_GetError()<<std::endl;
 	}
-	const int nScreenWidth = 800;
-	const int nScreenHeight = 800;
-	RenderWindow window("Game v1.0", nScreenWidth, nScreenHeight);
+	const int nScreenWidth = 1920/2;
+	const int nScreenHeight = 1080/2;
 
+	
+	RenderWindow window("Game v1.0", nScreenWidth, nScreenHeight);
+	SDL_Surface* icon = IMG_Load("res/gfx/icon.png");
+	window.setIcon(icon);
 	//Variables of the game 
 	
 	float PI = 3.1415926535f;
@@ -26,12 +32,28 @@ int main(int arc, char* args[]){
 	float fPlayerX = 20.0f;
 	float fPlayerY = 20.0f;
 	float fPlayerA = 0;
-	int nTextureHeight = 32;
-	int nTextureNumber = 4;
 	float fLastElapsed = 0;
 	float fSPEED = 10.0f;
 	float fCollisionRadius = 0.1f;
+
+	int nTextureHeight = 32;
+	int nTextureNumber = 4;
+
+	bool gameRunning = true;
+
 	const Uint8* keyState;
+
+	
+
+	std::chrono::time_point<std::chrono::system_clock> m_tp1, m_tp2;
+	
+	SDL_Texture* ceilingTex = window.loadTexture("res/gfx/ceiling.png");
+	SDL_Texture* floorTex = window.loadTexture("res/gfx/floor.png");
+	SDL_Texture* textureAtlas = window.loadTexture("res/gfx/textureAtlas.png");
+	SDL_Texture* hands = window.loadTexture("res/gfx/hands.png");
+
+	SDL_Event event;
+
 	std::vector<line> linelist = {
 		{ 12.8f, 30.08f, 13.8666666667f, 21.3333333333f,1 },
 
@@ -102,23 +124,17 @@ int main(int arc, char* args[]){
 		{ 15.68f, 28.6933333333f, 13.8666666667f, 29.5466666667f,3 },
 
 		{ 13.8666666667f, 29.5466666667f, 11.84f, 26.4533333333f,2 },};
-	std::chrono::time_point<std::chrono::system_clock> m_tp1, m_tp2;
+	std::vector<Entity> entities(nScreenWidth*2, Entity(0,0,textureAtlas,1,1,0.5));	
+	
 	m_tp1 = std::chrono::system_clock::now();
 	m_tp2 = std::chrono::system_clock::now();
-	SDL_Texture* ceilingTex = window.loadTexture("res/gfx/ceiling.png");
-	SDL_Texture* floorTex = window.loadTexture("res/gfx/floor.png");
-	SDL_Texture* textureAtlas = window.loadTexture("res/gfx/textureAtlas.png");
-	std::vector<Entity> entities(nScreenWidth, Entity(0,0,textureAtlas,1,1,0.5));
-	bool gameRunning = true;
-  	SDL_Event event;
-  	SDL_Texture* hands = window.loadTexture("res/gfx/hands.png");
+  	
+  
 	while(gameRunning){
 
 		m_tp2 = std::chrono::system_clock::now();
 		std::chrono::duration<float> elapsedTime = m_tp2 - m_tp1;
 		m_tp1 = m_tp2;
-
-		// Our time per frame coefficient
 		float fElapsedTime = elapsedTime.count();
 		fLastElapsed = fElapsedTime;
 		//std::cout<<"FPS: "<<1.0f/fElapsedTime<<std::endl;
@@ -140,6 +156,8 @@ int main(int arc, char* args[]){
 		//INPUT HANDLING
 		SDL_PumpEvents();
 		keyState = SDL_GetKeyboardState(NULL);
+		if(keyState[SDL_SCANCODE_ESCAPE])
+			gameRunning = false;
 		if(keyState[SDL_SCANCODE_Q]){
 			fPlayerA -= fElapsedTime*2.0f;
 		}
@@ -234,19 +252,27 @@ int main(int arc, char* args[]){
 			}
 			
 			float fWallSize = 1.26f * (float)nScreenHeight / cosf(fPlayerA - fRayAngle)/ dDepthBuffer[x].dist;
+			float fWallSizeBack = fWallSize*0.95;
 			float fScalingFactor = fWallSize / (float)nTextureHeight;
-			entities[x].setX(x);
-			entities[x].setY(nScreenHeight/2.0f - fWallSize/2.0f);
-			float fColorFactor = 2.0f*fWallSize/(float)nScreenWidth;
+			float fScalingFactorBack = fWallSizeBack / (float)nTextureHeight;
+			entities[2*x].setX(x);
+			entities[2*x].setY(nScreenHeight/2.0f - fWallSize/2.0f);
+			entities[2*x+1].setX(x);
+			entities[2*x+1].setY(nScreenHeight/2.0f - fWallSizeBack/2.0f);
+			float fColorFactor = 4.0f*fWallSize/(float)nScreenWidth;
 			if(fColorFactor>1){
 				fColorFactor = 1;
 			}
-			entities[x].darken(fColorFactor);
-			entities[x].setSize(fScalingFactor);
-			entities[x].setIdentifier(dDepthBuffer[x].nTextureIdentifier-1);
-			entities[x].setSample(dDepthBuffer[x].sample);
+			entities[2*x].darken(fColorFactor);
+			entities[2*x].setSize(fScalingFactor);
+			entities[2*x+1].setSize(fScalingFactorBack);
+			entities[2*x].setIdentifier(dDepthBuffer[x].nTextureIdentifier-1);
+			entities[2*x+1].setIdentifier(dDepthBuffer[x].nTextureIdentifier+3);
+			entities[2*x].setSample(dDepthBuffer[x].sample);
+			entities[2*x+1].setSample(dDepthBuffer[x].sample);
 			
-			window.render(entities[x]);
+			window.render(entities[2*x+1]);
+			window.render(entities[2*x]);
 		}
 		if (bCanMoveY)
 				fPlayerY += fNewY;

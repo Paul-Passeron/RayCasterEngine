@@ -14,6 +14,7 @@ public:
 	void render(Entity& p_entity);
 	void render(SDL_Texture* p_tex, float p_size, float x, float y, float w, float h);
 	void display();
+	void setIcon(SDL_Surface* icon);
 private:
 	SDL_Window* window;
 	SDL_Renderer* renderer;
