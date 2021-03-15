@@ -17,6 +17,7 @@ public:
 	//void set(float p_x, float p_y, SDL_Texture* p_tex, float p_size, int p_id);
 	void setIdentifier(int p_id);
 	int getId();
+	void darken(float a);
 	float getSample();
 	void setSample(float p_sample);
 private:

@@ -64,6 +64,9 @@ int Entity::getId(){
 float Entity::getSample(){
 	return currentFrame.x;
 }
+void Entity::darken(float a){
+	SDL_SetTextureColorMod(tex, 255.0f*a, 255.0f*a, 255.0f*a);
+}
 
 void Entity::setSample(float p_sample){
 	currentFrame.x = p_sample*32.0f;

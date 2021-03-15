@@ -9,7 +9,7 @@ struct line{
 	int nTextureIdentifier;
 };
 struct depthElement{
-	float dist, sample;
+	float dist, sample, lightfactor;
 	int nTextureIdentifier;
 };
 

@@ -21,14 +21,16 @@ int main(int arc, char* args[]){
 
 	//Variables of the game 
 	
-	float PI = 3.14156;
+	float PI = 3.1415926535f;
 	float fFOV = PI/3.0f;
 	float fPlayerX = 8.0f;
 	float fPlayerY = 6.0f;
-	float fPlayerA = PI;
+	float fPlayerA = 0;
 	int nTextureHeight = 32;
 	int nTextureNumber = 4;
 	float fLastElapsed = 0;
+	float fSPEED = 10.0f;
+	const Uint8* keyState;
 	std::vector<line> linelist = {
 		{ 12.8f, 30.08f, 13.8666666667f, 21.3333333333f,1 },
 
@@ -108,6 +110,7 @@ int main(int arc, char* args[]){
 	bool gameRunning = true;
   	SDL_Event event;
 	while(gameRunning){
+
 		m_tp2 = std::chrono::system_clock::now();
 		std::chrono::duration<float> elapsedTime = m_tp2 - m_tp1;
 		m_tp1 = m_tp2;
@@ -115,48 +118,57 @@ int main(int arc, char* args[]){
 		// Our time per frame coefficient
 		float fElapsedTime = elapsedTime.count();
 		fLastElapsed = fElapsedTime;
-		std::cout<<"FPS: "<<1.0f/fElapsedTime<<std::endl;
+		//std::cout<<"FPS: "<<1.0f/fElapsedTime<<std::endl;
 		while(SDL_PollEvent(&event)){
+			
+
 			switch(event.type){
+
 				case SDL_QUIT:
 					gameRunning = false;
 					break;
 				case SDL_KEYDOWN:
-					if(event.key.keysym.sym == SDLK_a)
-							fPlayerA -=fElapsedTime*10.0f;
-					if(event.key.keysym.sym == SDLK_e)
-							fPlayerA +=fElapsedTime*10.0f;
-						
-						if(event.key.keysym.sym == SDLK_z){
-							fPlayerX += sinf(fPlayerA)*fElapsedTime*100.0f;
-							fPlayerY += cosf(fPlayerA)*fElapsedTime*100.0f;
-						}
-						if(event.key.keysym.sym == SDLK_s){
-							fPlayerX -= sinf(fPlayerA)*fElapsedTime*100.0f;
-							fPlayerY -= cosf(fPlayerA)*fElapsedTime*100.0f;
-						}
-						if(event.key.keysym.sym == SDLK_d){
-							fPlayerX += sinf(fPlayerA)*fElapsedTime*100.0f;
-							fPlayerY -= cosf(fPlayerA)*fElapsedTime*100.0f;
-						}
-						if(event.key.keysym.sym == SDLK_q){
-							fPlayerX -= sinf(fPlayerA)*fElapsedTime*100.0f;
-							fPlayerY += cosf(fPlayerA)*fElapsedTime*100.0f;
-						}
-					
 					break;
 				default:
 					break;
+				
+				
 			}
+			
+		}
+
+		//INPUT HANDLING
+		SDL_PumpEvents();
+		keyState = SDL_GetKeyboardState(NULL);
+		if(keyState[SDL_SCANCODE_Q]){
+			fPlayerA -= fElapsedTime*2.0f;
+		}
+		if(keyState[SDL_SCANCODE_E]){
+			fPlayerA += fElapsedTime*2.0f;
+		}
+		if(keyState[SDL_SCANCODE_W]){
+			fPlayerX += sinf(fPlayerA)*fElapsedTime*fSPEED;
+			fPlayerY += cosf(fPlayerA)*fElapsedTime*fSPEED;
+		}
+		if(keyState[SDL_SCANCODE_S]){
+			fPlayerX -= sinf(fPlayerA)*fElapsedTime*fSPEED;
+			fPlayerY -= cosf(fPlayerA)*fElapsedTime*fSPEED;
+		}
+		if(keyState[SDL_SCANCODE_A]){
+			fPlayerX -= cosf(fPlayerA)*fElapsedTime*fSPEED;
+			fPlayerY += sinf(fPlayerA)*fElapsedTime*fSPEED;
+		}
+		if(keyState[SDL_SCANCODE_D]){
+			fPlayerX += cosf(fPlayerA)*fElapsedTime*fSPEED;
+			fPlayerY -= sinf(fPlayerA)*fElapsedTime*fSPEED;
 		}
 		//Game Loop
 		// Handle Timing
-				depthElement dDepthBuffer[nScreenWidth]{1000.0f, 0.0f, 1};
+		depthElement dDepthBuffer[nScreenWidth]{1000.0f, 0.0f, 1};
 		
-		
-		//std::cout << fPlayerA << std::endl;
 		window.clear();
 		point pPlayerPoint = {fPlayerX, fPlayerY};
+		
 		for(int x = 0; x<nScreenWidth; x++){
 			dDepthBuffer[x].dist = 1000.0f;
 			float fRayAngle = -fFOV / 2.0f + fPlayerA + fFOV * float(x) / (float)nScreenWidth;
@@ -169,18 +181,16 @@ int main(int arc, char* args[]){
 				if(pEyeWallIntersection.x < 1000.0f){
 					
 					float distance = dist(pEyeWallIntersection, pPlayerPoint);
-					//std::cout <<distance<<std::endl;
+					
 					float sample = dist(pEyeWallIntersection, linelist[lineIndex].p1);
-					//float sample = 0.1f;
+					
 					sample = sample - floor(sample);
 					if(distance < dDepthBuffer[x].dist && distance > 0){
-						//std::cout<<"yay"<<std::endl;
+						
 						dDepthBuffer[x].dist = distance;
 						dDepthBuffer[x].sample = sample;
 						dDepthBuffer[x].nTextureIdentifier =  linelist[lineIndex].nTextureIdentifier;
-						//std::cout<<(float)x/(float)nScreenWidth<<std::endl;
-						//std::cout<<distance<<std::endl;
-						//dDepthBuffer[x] = {distance, sample, linelist[lineIndex].nTextureIdentifier};
+						
 					}
 				}
 			}
@@ -188,14 +198,21 @@ int main(int arc, char* args[]){
 			float fScalingFactor = fWallSize / (float)nTextureHeight;
 			entities[x].setX(x);
 			entities[x].setY(nScreenHeight/2.0f - fWallSize/2.0f);
-			
+			float fColorFactor = 2.0f*fWallSize/(float)nScreenWidth;
+			if(fColorFactor>1){
+				fColorFactor = 1;
+			}
+			entities[x].darken(fColorFactor);
 			entities[x].setSize(fScalingFactor);
-			entities[x].setIdentifier(dDepthBuffer[x].nTextureIdentifier);
+			entities[x].setIdentifier(dDepthBuffer[x].nTextureIdentifier-1);
 			entities[x].setSample(dDepthBuffer[x].sample);
-			//std::cout<<entities[x].getSample()<<std::endl;
+			
 			window.render(entities[x]);
 		}
 		window.display();
+		
+
+		
 
 	}
 	window.cleanUp();
