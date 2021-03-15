@@ -23,13 +23,14 @@ int main(int arc, char* args[]){
 	
 	float PI = 3.1415926535f;
 	float fFOV = PI/3.0f;
-	float fPlayerX = 8.0f;
-	float fPlayerY = 6.0f;
+	float fPlayerX = 20.0f;
+	float fPlayerY = 20.0f;
 	float fPlayerA = 0;
 	int nTextureHeight = 32;
 	int nTextureNumber = 4;
 	float fLastElapsed = 0;
 	float fSPEED = 10.0f;
+	float fCollisionRadius = 0.1f;
 	const Uint8* keyState;
 	std::vector<line> linelist = {
 		{ 12.8f, 30.08f, 13.8666666667f, 21.3333333333f,1 },
@@ -104,11 +105,13 @@ int main(int arc, char* args[]){
 	std::chrono::time_point<std::chrono::system_clock> m_tp1, m_tp2;
 	m_tp1 = std::chrono::system_clock::now();
 	m_tp2 = std::chrono::system_clock::now();
-
+	SDL_Texture* ceilingTex = window.loadTexture("res/gfx/ceiling.png");
+	SDL_Texture* floorTex = window.loadTexture("res/gfx/floor.png");
 	SDL_Texture* textureAtlas = window.loadTexture("res/gfx/textureAtlas.png");
 	std::vector<Entity> entities(nScreenWidth, Entity(0,0,textureAtlas,1,1,0.5));
 	bool gameRunning = true;
   	SDL_Event event;
+  	SDL_Texture* hands = window.loadTexture("res/gfx/hands.png");
 	while(gameRunning){
 
 		m_tp2 = std::chrono::system_clock::now();
@@ -120,10 +123,7 @@ int main(int arc, char* args[]){
 		fLastElapsed = fElapsedTime;
 		//std::cout<<"FPS: "<<1.0f/fElapsedTime<<std::endl;
 		while(SDL_PollEvent(&event)){
-			
-
 			switch(event.type){
-
 				case SDL_QUIT:
 					gameRunning = false;
 					break;
@@ -131,12 +131,12 @@ int main(int arc, char* args[]){
 					break;
 				default:
 					break;
-				
-				
 			}
-			
 		}
-
+		float fNewX = 0.0f;
+		float fNewY = 0.0f;
+		bool bCanMoveX = true;
+		bool bCanMoveY = true;
 		//INPUT HANDLING
 		SDL_PumpEvents();
 		keyState = SDL_GetKeyboardState(NULL);
@@ -147,20 +147,20 @@ int main(int arc, char* args[]){
 			fPlayerA += fElapsedTime*2.0f;
 		}
 		if(keyState[SDL_SCANCODE_W]){
-			fPlayerX += sinf(fPlayerA)*fElapsedTime*fSPEED;
-			fPlayerY += cosf(fPlayerA)*fElapsedTime*fSPEED;
+			fNewX += sinf(fPlayerA)*fElapsedTime*fSPEED;
+			fNewY += cosf(fPlayerA)*fElapsedTime*fSPEED;
 		}
 		if(keyState[SDL_SCANCODE_S]){
-			fPlayerX -= sinf(fPlayerA)*fElapsedTime*fSPEED;
-			fPlayerY -= cosf(fPlayerA)*fElapsedTime*fSPEED;
+			fNewX -= sinf(fPlayerA)*fElapsedTime*fSPEED;
+			fNewY -= cosf(fPlayerA)*fElapsedTime*fSPEED;
 		}
 		if(keyState[SDL_SCANCODE_A]){
-			fPlayerX -= cosf(fPlayerA)*fElapsedTime*fSPEED;
-			fPlayerY += sinf(fPlayerA)*fElapsedTime*fSPEED;
+			fNewX -= cosf(fPlayerA)*fElapsedTime*fSPEED;
+			fNewY += sinf(fPlayerA)*fElapsedTime*fSPEED;
 		}
 		if(keyState[SDL_SCANCODE_D]){
-			fPlayerX += cosf(fPlayerA)*fElapsedTime*fSPEED;
-			fPlayerY -= sinf(fPlayerA)*fElapsedTime*fSPEED;
+			fNewX += cosf(fPlayerA)*fElapsedTime*fSPEED;
+			fNewY -= sinf(fPlayerA)*fElapsedTime*fSPEED;
 		}
 		//Game Loop
 		// Handle Timing
@@ -168,7 +168,9 @@ int main(int arc, char* args[]){
 		
 		window.clear();
 		point pPlayerPoint = {fPlayerX, fPlayerY};
-		
+		//Draw floor and ceiling temporary;
+		window.render(ceilingTex, nScreenWidth, 0, 0, 1, 1);
+		window.render(floorTex, nScreenWidth, 0, nScreenHeight/2, 1, 1);
 		for(int x = 0; x<nScreenWidth; x++){
 			dDepthBuffer[x].dist = 1000.0f;
 			float fRayAngle = -fFOV / 2.0f + fPlayerA + fFOV * float(x) / (float)nScreenWidth;
@@ -178,6 +180,42 @@ int main(int arc, char* args[]){
 			line lSeeLine = {pPlayerPoint, pRayPoint};
 			for(int lineIndex = 0; lineIndex < linelist.size(); lineIndex++){
 				point pEyeWallIntersection = line_line_intersection(lSeeLine, linelist[lineIndex]);
+				if(bCanMoveX or bCanMoveY){
+					point pxy = {fPlayerX+fNewX, fPlayerY+fNewY};
+					point px = {fPlayerX+fNewX, fPlayerY};
+					point py = {fPlayerX, fPlayerY+fNewY};
+
+					point pRayPointxy = {fRayX + fNewX + fPlayerX, fRayY + fNewY + fPlayerY};
+					point pRayPointy = {fRayX + fPlayerX, fRayY + fNewY + fPlayerY};
+					point pRayPointx = {fRayX + fNewX + fPlayerX, fRayY + fPlayerY};
+
+					point pPlayerPointxy = {fPlayerX + fNewX, fPlayerY + fNewY};
+					point pPlayerPointx = {fPlayerX + fNewX, fPlayerY};
+					point pPlayerPointy = {fPlayerX, fPlayerY + fNewY};
+
+					line lxy = {pPlayerPointxy, pRayPointxy};
+					line lx = {pPlayerPointx, pRayPointx};
+					line ly = {pPlayerPointy, pRayPointy};
+
+					point interxy = llinter(lxy, linelist[lineIndex]);
+					point interx = llinter(lx, linelist[lineIndex]);
+					point intery = llinter(ly, linelist[lineIndex]);
+
+					float distancenxy = dist(interxy, pxy);
+					float distancenx = dist(interx, px);
+					float distanceny = dist(intery, py);
+					
+					if(distancenxy<=fCollisionRadius){
+						bCanMoveY = false;
+						bCanMoveX = false;
+					}
+					if(distancenx<=fCollisionRadius){
+						bCanMoveX = false;
+					}
+					if(distanceny<=fCollisionRadius){
+						bCanMoveY = false;
+					}
+				}
 				if(pEyeWallIntersection.x < 1000.0f){
 					
 					float distance = dist(pEyeWallIntersection, pPlayerPoint);
@@ -194,6 +232,7 @@ int main(int arc, char* args[]){
 					}
 				}
 			}
+			
 			float fWallSize = 1.26f * (float)nScreenHeight / cosf(fPlayerA - fRayAngle)/ dDepthBuffer[x].dist;
 			float fScalingFactor = fWallSize / (float)nTextureHeight;
 			entities[x].setX(x);
@@ -209,11 +248,15 @@ int main(int arc, char* args[]){
 			
 			window.render(entities[x]);
 		}
+		if (bCanMoveY)
+				fPlayerY += fNewY;
+			if(bCanMoveX)
+				fPlayerX += fNewX;
+		int nHandSize = 10;
+		int nHandW = 15;
+		int nHandH = 18;
+		window.render(hands, nHandSize, (nScreenWidth-nHandW*nHandSize)/2.0f, nScreenHeight-nHandH*nHandSize, 15, 18);
 		window.display();
-		
-
-		
-
 	}
 	window.cleanUp();
 	SDL_Quit();

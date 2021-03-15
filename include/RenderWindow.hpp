@@ -12,6 +12,7 @@ public:
 	void cleanUp();
 	void clear();
 	void render(Entity& p_entity);
+	void render(SDL_Texture* p_tex, float p_size, float x, float y, float w, float h);
 	void display();
 private:
 	SDL_Window* window;

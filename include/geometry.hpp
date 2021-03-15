@@ -14,6 +14,7 @@ struct depthElement{
 };
 
 point line_line_intersection(line& l1, line& wall);
+point llinter(line&l1, line&wall);
 float dist(point& p1, point& p2);
 int getId(int p_textureNumber, int p_columnIndex);
 
